@@ -8,8 +8,10 @@ import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import java.util.{Locale, TimeZone}
 
 object ClassesDomain {
-  case class Person(personId: Long, fName: String, lName: String, eyeColor: String, street: String,
+  case class Person(personId: String, fName: String, lName: String, eyeColor: String, street: String,
                     city: String, state: String, country: String, postalCode: String, birthdate: LocalDateTime)
+
+  case class PersonId(id: String)
 
 
   /*object Person {
@@ -58,9 +60,17 @@ object ClassesDomain {
         country <- h.get[String]("country")
         postalCode <- h.get[String]("postal_code")
         birthdate <- h.get[String]("birth_date")
-      } yield Person(personId, fName, lName, eyeColor, street, city, state, country, postalCode,
+      } yield Person(personId.toString, fName, lName, eyeColor, street, city, state, country, postalCode,
         dateParse(birthdate))
 
+    }
+  }
+
+  object PersonId {
+    implicit val decoder: Decoder[PersonId] = Decoder.instance { h =>
+      for {
+        personId <- h.get[Long]("person_id")
+      } yield PersonId(personId.toString)
     }
   }
 

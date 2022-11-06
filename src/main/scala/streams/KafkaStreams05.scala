@@ -21,13 +21,8 @@ object KafkaStreams05 {
 
   object Topics {
     val PersonTopic = "db_modiseh.kafka_test.person"
-    val Person2Topic = "test-person2"
-    val Person3Topic = "test-person3"
-    val Person4Topic = "test-person4"
-    val CountryTopic = "filter-by-country"
-    val FavoriteFoodTopic = "db_modiseh.kafka_test.favorite_food"
-    val FavoriteFoodByPersonTopic = "favorite-food-by-person"
-    val PersonByYearTopic = "person-by-year"
+    val NewPersonTopic = "db_modiseh.kafka_test.person3"
+    val Person8Topic = "db_modiseh.kafka_test.person_eight"
   }
 
   implicit def serde[A >: Null : Decoder : Encoder]: Serde[A] = {
@@ -48,9 +43,9 @@ object KafkaStreams05 {
 
     val builder = new StreamsBuilder()
 
-    val personRawStream: KStream[String, String] = builder.stream[String, String](PersonTopic)
+    val personRawStream: KStream[String, String] = builder.stream[String, String](NewPersonTopic)
 
-    val personStream: KStream[Long, Person] = personRawStream.map { (k, v) =>
+    val personStream: KStream[PersonId, Person] = personRawStream.map { (k, v) =>
       val valueJson = parse(v) match {
         case Left(ex) => throw new IllegalArgumentException(ex.message)
         case Right(json) => json
@@ -60,10 +55,10 @@ object KafkaStreams05 {
         case Left(ex) => throw new IllegalArgumentException(ex.getMessage)
         case Right(person) => person
       }
-      (personDecoded.personId, personDecoded)
+      (PersonId(personDecoded.personId), personDecoded)
     }
 
-    val favoriteFoodRawStream: KStream[String, String] = builder.stream[String, String](FavoriteFoodTopic)
+    /*val favoriteFoodRawStream: KStream[String, String] = builder.stream[String, String](FavoriteFoodTopic)
     val favoriteFoodStream: KStream[Long, FavoriteFood] = favoriteFoodRawStream.map { (id, ff) =>
       val valueJson = parse(ff) match {
         case Left(ex) => throw new IllegalArgumentException(ex)
@@ -75,13 +70,13 @@ object KafkaStreams05 {
         case Right(favoriteFood) => favoriteFood
       }
       (fFDecoded.personId, fFDecoded)
-    }
+    }*/
 
     personStream.foreach { (k, data) =>
       println("STREAMED +++++++++++ " + data)
     }
 
-    personStream.to(Person4Topic)
+    personStream.to(Person8Topic)
 
 
     /*personStream.to(Person2Topic)
@@ -126,7 +121,7 @@ object KafkaStreams05 {
     val topology = builder.build()
 
     val props = new Properties()
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-app-02")
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-app-03")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "172.31.70.24:9092")
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
