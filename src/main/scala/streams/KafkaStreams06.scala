@@ -1,7 +1,7 @@
 package streams
 
 import io.circe.generic.auto.exportEncoder
-import io.circe.{Json, _}
+import io.circe.{Decoder, Json, _}
 import io.circe.parser._
 import io.circe.syntax.EncoderOps
 import org.apache.kafka.common.serialization.Serde
@@ -16,14 +16,15 @@ import org.apache.kafka.streams.{KafkaStreams, StreamsConfig}
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Properties
+import scala.util.Left
 
-object KafkaStreams05 {
+
+object KafkaStreams06 {
 
   object Topics {
-    val PersonTopic = "db_modiseh.kafka_test.person"
-    val NewPersonTopic = "db_modiseh.kafka_test.person3"
-    val Person8Topic = "db_modiseh.kafka_test.person_eight"
-    val FavoriteFoodTopic = "db_modiseh.kafka_test.favorite_food"
+    val NewPersonTopic = "db_modiseh.kafka_test.person4"
+    val Person9Topic = "db_modiseh.kafka_test.person_nine"
+    val FavoriteFoodTopic = "db_modiseh.kafka_test.favorite_food2"
   }
 
   implicit def serde[A >: Null : Decoder : Encoder]: Serde[A] = {
@@ -46,21 +47,21 @@ object KafkaStreams05 {
 
     val personRawStream: KStream[String, String] = builder.stream[String, String](NewPersonTopic)
 
-    val personStream: KStream[String, Person] = personRawStream.map { (k, v) =>
+    val personStream = personRawStream.mapValues { v =>
       val valueJson = parse(v) match {
         case Left(ex) => throw new IllegalArgumentException(ex.message)
         case Right(json) => json
       }
-      val personJson = ((valueJson \\ "payload").head \\ "after").head.asJson.noSpaces
+      val personJson = (valueJson \\ "after").head.asJson.noSpaces
       val personDecoded = decode[Person](personJson) match {
         case Left(ex) => throw new IllegalArgumentException(ex.getMessage)
         case Right(person) => person
       }
-      (personDecoded.personId, personDecoded)
+      personDecoded
     }
 
     val favoriteFoodRawStream: KStream[String, String] = builder.stream[String, String](FavoriteFoodTopic)
-    val favoriteFoodStream: KStream[String, FavoriteFood] = favoriteFoodRawStream.map { (id, ff) =>
+    val favoriteFoodStream = favoriteFoodRawStream.mapValues { ff =>
       val valueJson = parse(ff) match {
         case Left(ex) => throw new IllegalArgumentException(ex)
         case Right(json) => json
@@ -70,59 +71,17 @@ object KafkaStreams05 {
         case Left(ex) => throw new IllegalArgumentException(ex.getMessage)
         case Right(favoriteFood) => favoriteFood
       }
-      (fFDecoded.personId, fFDecoded)
+      fFDecoded
     }
 
-    personStream.foreach { (k, data) =>
-      println("STREAMED +++++++++++ " + data)
-    }
 
-    personStream.to(Person8Topic)
-
-
-    /*personStream.to(Person2Topic)
-
-    personStream.filter { (id, person) =>
-      person.personId > 3
-    }.mapValues( v => v.asJson.noSpaces)
-      .to(Person3Topic)
-
-    personStream.filter { (_, person) =>
-      person.birthdate.getYear > 1970
-    }.mapValues(_.asJson.noSpaces)
-      .to(PersonByYearTopic)*/
-
-
-    /*val person = decode[Person](rawJsonString2)
-    println(person)*/
-
-    /*val kafkaJson = parse(rawJsonString) match {
-      case Left(ex) => throw new IllegalArgumentException(ex.message)
-      case Right(json) => json
-    }
-
-    val personJson = ((kafkaJson \\ "payload").head \\ "after").head.asJson.noSpaces
-
-    val person2 = decode[Person](personJson)
-    println(person2)*/
-
-
-
-    /*val kafkaJsonTimestamp = parse(rawJsonTimestamp) match {
-      case Left(ex) => throw new IllegalArgumentException(ex.message)
-      case Right(json) => json
-    }
-
-    val personJsonTimestamp = ((kafkaJsonTimestamp \\ "payload").head \\ "after").head.asJson.noSpaces
-
-    val person3 = decode[Person](personJsonTimestamp)
-    println(person3)*/
+    personStream.to(Person9Topic)
 
 
     val topology = builder.build()
 
     val props = new Properties()
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-app-03")
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-app-04")
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "172.31.70.24:9092")
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
@@ -130,7 +89,5 @@ object KafkaStreams05 {
     val application = new KafkaStreams(topology, props)
     application.start()
   }
-
-
 
 }

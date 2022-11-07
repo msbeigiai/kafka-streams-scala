@@ -50,7 +50,7 @@ object ClassesDomain {
 
     implicit val decoder: Decoder[Person] = Decoder.instance { h =>
       for {
-        personId <- h.get[Long]("person_id")
+        personId <- h.get[Int]("person_id")
         fName <- h.get[String]("fname")
         lName <- h.get[String]("lname")
         eyeColor <- h.get[String]("eye_color")
@@ -74,13 +74,13 @@ object ClassesDomain {
     }
   }
 
-  case class FavoriteFood(personId: Long, food: String)
+  case class FavoriteFood(personId: String, food: String)
   object FavoriteFood {
     implicit val decoder: Decoder[FavoriteFood] = Decoder.instance { h =>
       for {
-        personId <- h.get[Long]("person_id")
+        personId <- h.get[Int]("person_id")
         food <- h.get[String]("food")
-      } yield FavoriteFood(personId, food)
+      } yield FavoriteFood(personId.toString, food)
     }
   }
 
