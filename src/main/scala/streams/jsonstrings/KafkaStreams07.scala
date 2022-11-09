@@ -5,6 +5,7 @@ import io.circe.{Decoder, Encoder}
 import io.circe.parser._
 import io.circe.syntax.EncoderOps
 import org.apache.kafka.common.serialization.Serde
+import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.scala.ImplicitConversions._
 import org.apache.kafka.streams.scala.StreamsBuilder
 import org.apache.kafka.streams.scala.kstream.{KStream, KTable}
@@ -12,6 +13,8 @@ import org.apache.kafka.streams.scala.serialization.Serdes
 import org.apache.kafka.streams.scala.serialization.Serdes.stringSerde
 import org.apache.kafka.streams.{KafkaStreams, StreamsConfig}
 
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.Properties
 
 
@@ -28,7 +31,7 @@ object KafkaStreams07 {
   object Topics {
     val UserTopic = "user"
     val FavoriteFoodTopic = "favorite-food"
-      val UserAndFavoriteFoodTopic = "user-and-favorite-food"
+    val UserAndFavoriteFoodTopic = "user-and-favorite-food"
     val UserOptionTopic = "user-option"
     val UserFilteredFavoriteFoodTopic = "user-filtered-favorite-food"
     val UserWithAllFavoriteFoods = "user-with-all-favorite-food"
@@ -52,12 +55,18 @@ object KafkaStreams07 {
     val userStream: KStream[UserId, User] = builder.stream[UserId, User](UserTopic)
     val favoriteFoodTable: KTable[UserId, FavoriteFood] = builder.table(FavoriteFoodTopic)
 
-    val joinedUsersFavoriteFoods: KStream[UserId, (User, FavoriteFood)] = userStream.join(favoriteFoodTable)( (u, f) =>
-      (u, f)
-    )
+    val joinWindows = JoinWindows.of(Duration.of(2, ChronoUnit.SECONDS))
 
+    val joinedUsersFavoriteFoods: KStream[UserId, (User, FavoriteFood)] = userStream.join(favoriteFoodTable)(
+      { (u, f) => (u, f) }
+    )
     joinedUsersFavoriteFoods.to(UserAndFavoriteFoodTopic)
 
+    /*val userByFood = joinedUsersFavoriteFoods.map {
+      case (userId: UserId, (user: User, favoriteFood: FavoriteFood)) if favoriteFood.food == "Pizza" =>
+        (userId, favoriteFood)
+    }
+    userByFood.to(UserAndFavoriteFoodTopic)*/
 
 
 
