@@ -1,6 +1,5 @@
 package streams
 
-import io.circe.generic.auto.exportEncoder
 import io.circe.{Decoder, Json, _}
 import io.circe.parser._
 import io.circe.syntax.EncoderOps
@@ -21,10 +20,16 @@ import scala.util.Left
 
 object KafkaStreams06 {
 
+  object Config {
+    val bootstrapServer = "172.30.6.61:9092"
+  }
+
   object Topics {
     val NewPersonTopic = "db_modiseh.kafka_test.person4"
     val Person9Topic = "db_modiseh.kafka_test.person_nine"
     val FavoriteFoodTopic = "db_modiseh.kafka_test.favorite_food2"
+    val FavoriteFoodStreamTopic = "favorite_stream_food"
+    val FavoriteFoodByUserTopic = "favorite-food-by-user"
   }
 
   implicit def serde[A >: Null : Decoder : Encoder]: Serde[A] = {
@@ -39,6 +44,7 @@ object KafkaStreams06 {
   def main(args: Array[String]): Unit = {
 
     import domain._
+    import Config._
     import jsonstrings.JsonStrings.JsonData._
     import Topics._
     import streams.domain.ClassesDomain._
@@ -61,12 +67,12 @@ object KafkaStreams06 {
     }
 
     val favoriteFoodRawStream: KStream[String, String] = builder.stream[String, String](FavoriteFoodTopic)
-    val favoriteFoodStream = favoriteFoodRawStream.mapValues { ff =>
-      val valueJson = parse(ff) match {
+    val favoriteFoodStream = favoriteFoodRawStream.mapValues { v =>
+      val valueJson = parse(v) match {
         case Left(ex) => throw new IllegalArgumentException(ex)
         case Right(json) => json
       }
-      val fFoodJson = ((valueJson \\ "payload").head \\ "after").head.asJson.noSpaces
+      val fFoodJson = (valueJson \\ "after").head.asJson.noSpaces
       val fFDecoded = decode[FavoriteFood](fFoodJson) match {
         case Left(ex) => throw new IllegalArgumentException(ex.getMessage)
         case Right(favoriteFood) => favoriteFood
@@ -75,14 +81,28 @@ object KafkaStreams06 {
     }
 
 
-    personStream.to(Person9Topic)
+//    favoriteFoodStream.to(FavoriteFoodStreamTopic)
+//    personStream.to(Person9Topic)
+//    favoriteFoodStream.foreach((i, v) => println("STREAMED ++++++++++: " + v))
 
+    /*val joinWindow = JoinWindows.of(Duration.of(5, ChronoUnit.MINUTES))
+    val joinerFood = (favoriteFood: FavoriteFood) =>
+      if (favoriteFood.food == "pizza") Option(favoriteFood) else Option.empty*/
+
+    /*val favoritePersonByFavoriteFood: KStream[String, (String, String)] = personStream.join(favoriteFoodStream) (
+      (p, f) => (p.fName, f.food)
+    )*/
+
+
+//    favoritePersonByFavoriteFood.to(FavoriteFoodByUserTopic)
+
+//    favoritePersonByFavoriteFood.foreach((k, v) => println(s"STREAMED +++++++++++: $v"))
 
     val topology = builder.build()
 
     val props = new Properties()
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-app-04")
-    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "172.31.70.24:9092")
+    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer)
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.stringSerde.getClass)
 
